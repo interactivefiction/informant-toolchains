@@ -1,4 +1,4 @@
-name: Build Informant Toolchain CI
+name: Build Informant Toolchain
 
 on:
   workflow_dispatch:
@@ -8,8 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Say hello
-        run: echo "Informant CI is alive!"
+      - name: Check out informant-toolchains
+        uses: actions/checkout@v4
 
-      - name: Show Linux version
-        run: uname -a
+      - name: Show repository contents
+        run: |
+          echo "We are in:"
+          pwd
+
+          echo "Repository contains:"
+          ls -la
