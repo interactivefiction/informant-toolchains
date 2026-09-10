@@ -10,11 +10,47 @@ jobs:
     steps:
       - name: Check out informant-toolchains
         uses: actions/checkout@v7
+        with:
+          path: informant-toolchains
 
-      - name: Show repository contents
+      - name: Check out Inweb 7.2.0
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inweb
+          ref: inweb-7.2.0
+          path: inweb
+
+      - name: Check out Intest 2.1.0
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/intest
+          ref: intest-2.1.0
+          path: intest
+
+      - name: Check out Inform 10.1.2
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inform
+          ref: inform-10.1.2
+          path: inform
+
+      - name: Show build workspace
         run: |
-          echo "We are in:"
+          echo "Current directory:"
           pwd
 
-          echo "Repository contains:"
+          echo
+          echo "Workspace contents:"
           ls -la
+
+          echo
+          echo "Inweb:"
+          git -C inweb branch --show-current
+
+          echo
+          echo "Intest:"
+          git -C intest branch --show-current
+
+          echo
+          echo "Inform:"
+          git -C inform branch --show-current
