@@ -82,3 +82,29 @@ jobs:
         run: |
           cd inform
           make check
+          
+      - name: Assemble Informant toolchain package
+        run: |
+          echo "========================================"
+          echo " Assembling Informant Toolchain"
+          echo "========================================"
+
+          mkdir -p PACKAGE/Compilers
+
+          cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
+          cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
+          cp inform/inblorb/Tangled/inblorb PACKAGE/Compilers/
+
+          cp -rfv inform/inform7/Internal/* PACKAGE/
+
+          echo
+          echo "Package contents:"
+          find PACKAGE -maxdepth 2 -type f | sort
+
+      - name: Create Linux toolchain archive
+        run: |
+          tar -czf informant-toolchain-linux-x64-10.1.2.tar.gz PACKAGE
+
+          echo
+          echo "Created:"
+          ls -lh informant-toolchain-linux-x64-10.1.2.tar.gz
