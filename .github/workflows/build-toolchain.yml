@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Check out informant-toolchains
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Show repository contents
         run: |
