@@ -54,3 +54,31 @@ jobs:
           echo
           echo "Inform:"
           git -C inform branch --show-current
+
+      - name: Build Inweb
+        run: |
+          bash inweb/scripts/first.sh linux
+
+      - name: Build Intest
+        run: |
+          bash intest/scripts/first.sh
+
+      - name: Build Inform
+        run: |
+          cd inform
+          bash scripts/first.sh
+
+      - name: Test Inblorb
+        run: |
+          cd inform
+          inblorb/Tangled/inblorb -help
+
+      - name: Test Inform with Intest
+        run: |
+          cd inform
+          ../intest/Tangled/intest inform7 -show Acidity
+
+      - name: Run Inform test suite
+        run: |
+          cd inform
+          make check
