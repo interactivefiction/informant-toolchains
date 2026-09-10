@@ -1,0 +1,15 @@
+name: Build Informant Toolchain CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Say hello
+        run: echo "Informant CI is alive!"
+
+      - name: Show Linux version
+        run: uname -a
