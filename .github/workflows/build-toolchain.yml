@@ -110,7 +110,7 @@ jobs:
           ls -lh informant-toolchain-linux-x64-10.1.2.tar.gz
 
       - name: Upload Linux toolchain artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: informant-toolchain-linux-x64-10.1.2
           path: informant-toolchain-linux-x64-10.1.2.tar.gz
