@@ -108,3 +108,9 @@ jobs:
           echo
           echo "Created:"
           ls -lh informant-toolchain-linux-x64-10.1.2.tar.gz
+
+      - name: Upload Linux toolchain artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: informant-toolchain-linux-x64-10.1.2
+          path: informant-toolchain-linux-x64-10.1.2.tar.gz
