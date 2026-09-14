@@ -34,6 +34,12 @@ jobs:
           ref: inform-10.1.2
           path: inform
 
+      - name: Check out Inform website
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inform-website
+          path: inform-website
+
       - name: Show build workspace
         run: |
           echo "Current directory:"
@@ -55,6 +61,10 @@ jobs:
           echo "Inform:"
           git -C inform branch --show-current
 
+          echo
+          echo "Inform website:"
+          git -C inform-website branch --show-current
+
       - name: Build Inweb
         run: |
           bash inweb/scripts/first.sh linux
@@ -67,6 +77,11 @@ jobs:
         run: |
           cd inform
           bash scripts/first.sh
+
+      - name: Build Inform documentation
+        run: |
+          cd inform-website
+          make books
 
       - name: Test Inblorb
         run: |
@@ -82,7 +97,7 @@ jobs:
         run: |
           cd inform
           make check
-          
+
       - name: Assemble Informant toolchain package
         run: |
           echo "========================================"
@@ -90,16 +105,22 @@ jobs:
           echo "========================================"
 
           mkdir -p PACKAGE/Compilers
+          mkdir -p PACKAGE/Documentation
 
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
           cp inform/inblorb/Tangled/inblorb PACKAGE/Compilers/
 
           cp -rfv inform/inform7/Internal/* PACKAGE/
+          cp -rfv inform-website/docs/* PACKAGE/Documentation/
 
           echo
           echo "Package contents:"
           find PACKAGE -maxdepth 2 -type f | sort
+
+          echo
+          echo "Documentation sample:"
+          find PACKAGE/Documentation -maxdepth 3 -type f | head -50
 
       - name: Create Linux toolchain archive
         run: |
