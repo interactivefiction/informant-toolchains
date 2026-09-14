@@ -81,7 +81,7 @@ jobs:
       - name: Build Inform documentation
         run: |
           cd inform-website
-          make books
+          make SHELL=/bin/bash books
 
       - name: Test Inblorb
         run: |
