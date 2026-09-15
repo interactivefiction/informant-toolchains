@@ -39,7 +39,13 @@ jobs:
         with:
           repository: interactivefiction/inform-website
           path: inform-website
-
+          
+      - name: Check out Quixe
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/quixe
+          path: quixe
+          
       - name: Show build workspace
         run: |
           echo "Current directory:"
@@ -64,7 +70,11 @@ jobs:
           echo
           echo "Inform website:"
           git -C inform-website branch --show-current
-
+          
+          echo
+          echo "Quixe:"
+          git -C quixe branch --show-current
+          
       - name: Build Inweb
         run: |
           bash inweb/scripts/first.sh linux
@@ -82,7 +92,12 @@ jobs:
         run: |
           cd inform-website
           make SHELL=/bin/bash books
-
+          
+      - name: Build Quixe
+        run: |
+          cd quixe
+          python3 build.py
+          
       - name: Test Inblorb
         run: |
           cd inform
@@ -106,6 +121,7 @@ jobs:
 
           mkdir -p PACKAGE/Compilers
           mkdir -p PACKAGE/Documentation
+          mkdir -p PACKAGE/Player/Quixe
 
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
@@ -113,7 +129,10 @@ jobs:
 
           cp -rfv inform/inform7/Internal/* PACKAGE/
           cp -rfv inform-website/docs/* PACKAGE/Documentation/
-
+          
+          cp -rfv quixe/lib PACKAGE/Player/Quixe/
+          cp -rfv quixe/media PACKAGE/Player/Quixe/
+          
           echo
           echo "Package contents:"
           find PACKAGE -maxdepth 2 -type f | sort
