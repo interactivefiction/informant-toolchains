@@ -120,12 +120,14 @@ jobs:
           echo "========================================"
 
           mkdir -p PACKAGE/Compilers
+          mkdir -p PACKAGE/Imagery
           mkdir -p PACKAGE/Documentation
           mkdir -p PACKAGE/Player/Quixe
 
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
           cp inform/inblorb/Tangled/inblorb PACKAGE/Compilers/
+          cp inform/resources/Imagery/* PACKAGE/Imagery/
 
           cp -rfv inform/inform7/Internal/* PACKAGE/
           cp -rfv inform-website/docs/* PACKAGE/Documentation/
