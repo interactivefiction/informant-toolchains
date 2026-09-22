@@ -319,14 +319,22 @@ jobs:
         run: |
           set -eux
 
+          # Intest's Inform 7 test recipe uses extensionless paths for the
+          # Inform 7 and Inform 6 executables. On Windows the build produces
+          # .exe names, so create temporary extensionless test aliases.
+          # These are test-only compatibility copies; the packaged production
+          # toolchain remains the native .exe binaries.
+          cp inform/inform7/Tangled/inform7.exe inform/inform7/Tangled/inform7
+          cp inform/inform6/Tangled/inform6.exe inform/inform6/Tangled/inform6
+
           echo "=== Intest binary ==="
           ls -l intest/Tangled/intest.exe
           file intest/Tangled/intest.exe
 
           echo
-          echo "=== Inform7 binary ==="
-          ls -l inform/inform7/Tangled/inform7.exe
-          file inform/inform7/Tangled/inform7.exe
+          echo "=== Inform test executable aliases ==="
+          ls -l inform/inform7/Tangled/inform7 inform/inform7/Tangled/inform7.exe
+          ls -l inform/inform6/Tangled/inform6 inform/inform6/Tangled/inform6.exe
 
           echo
           echo "=== Try running Intest directly ==="
@@ -335,7 +343,7 @@ jobs:
           echo
           echo "=== Run Acidity ==="
           cd inform
-          ../intest/Tangled/intest.exe ./inform7 -verbose -show Acidity
+          ../intest/Tangled/intest.exe inform7 -verbose -show Acidity
           
       # The full upstream `make check` currently reaches the same
       # Inform 6 CheapGlk test-assistant portability issue encountered
