@@ -80,21 +80,33 @@ jobs:
         shell: msys2 {0}
         run: |
           set -eux
-
-          # Inweb selects the target platform during bootstrap.
           bash inweb/scripts/first.sh windows
 
       - name: Build Intest 2.1.0
         shell: msys2 {0}
         run: |
           set -eux
-
           bash intest/scripts/first.sh
 
       - name: Build Inform 10.1.2
         shell: msys2 {0}
+
+        # EXPERIMENT:
+        # Keep upstream source pristine, but explicitly use Clang and
+        # downgrade the C99 implicit-function-declaration diagnostic.
+        #
+        # We are testing whether these environment variables propagate
+        # into the bundled CheapGlk build.
+        env:
+          CC: clang
+          CFLAGS: "-g -Wall -Wno-error=implicit-function-declaration"
+
         run: |
           set -eux
+
+          echo "=== Inform build environment ==="
+          echo "CC=$CC"
+          echo "CFLAGS=$CFLAGS"
 
           cd inform
           bash scripts/first.sh
