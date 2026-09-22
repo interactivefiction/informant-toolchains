@@ -334,7 +334,8 @@ jobs:
 
           echo
           echo "=== Run Acidity ==="
-          ./intest/Tangled/intest.exe ./inform/inform7 -verbose -show Acidity
+          cd inform
+          ../intest/Tangled/intest.exe ./inform7 -verbose -show Acidity
           
       # The full upstream `make check` currently reaches the same
       # Inform 6 CheapGlk test-assistant portability issue encountered
