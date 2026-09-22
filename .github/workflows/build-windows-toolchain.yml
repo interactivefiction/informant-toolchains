@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-inweb-windows:
-    name: Build Inweb 7.2.0 — windows target
+  build-windows-toolchain:
+    name: Build Inweb 7.2.0 + Intest 2.1.0 — windows target
     runs-on: windows-latest
 
     steps:
@@ -47,6 +47,10 @@ jobs:
           which make
           which clang
 
+      # ----------------------------------------------------------------
+      # Source
+      # ----------------------------------------------------------------
+
       - name: Check out Inweb 7.2.0
         uses: actions/checkout@v4
         with:
@@ -54,52 +58,91 @@ jobs:
           ref: inweb-7.2.0
           path: inweb
 
-      - name: Inspect Inweb bootstrap
+      - name: Check out Intest 2.1.0
+        uses: actions/checkout@v4
+        with:
+          repository: interactivefiction/intest
+          ref: intest-2.1.0
+          path: intest
+
+      # ----------------------------------------------------------------
+      # Build
+      # ----------------------------------------------------------------
+
+      - name: Build Inweb 7.2.0 for Windows
         shell: msys2 {0}
         run: |
           set -eux
 
-          echo "=== Repository ==="
-          git -C inweb status
-          git -C inweb rev-parse HEAD
-
-          echo "=== first.sh ==="
-          ls -l inweb/scripts/first.sh
-          file inweb/scripts/first.sh
-
-          echo "=== Platform references ==="
-          grep -Rni \
-            "windows\|win32\|mingw\|linux\|macos\|macosarm\|macosuniv\|unix" \
-            inweb/scripts \
-            || true
-
-      - name: Build Inweb for Windows
-        shell: msys2 {0}
-        run: |
-          set -eux
-
-          # Inweb's bootstrap accepts a platform target.
-          # Exercise the upstream Windows target directly.
+          # Inweb selects the target platform during bootstrap.
           bash inweb/scripts/first.sh windows
 
-      - name: Inspect Windows build output
+      - name: Build Intest 2.1.0
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          # Match the established bootstrap sequence.
+          # Intest's first.sh is invoked without a platform argument.
+          bash intest/scripts/first.sh
+
+      # ----------------------------------------------------------------
+      # Inspect
+      # ----------------------------------------------------------------
+
+      - name: Inspect Windows build results
         if: always()
         shell: msys2 {0}
         run: |
+          echo "=================================================="
+          echo "INWEB"
+          echo "=================================================="
+
+          echo
           echo "=== Inweb executables ==="
           find inweb -maxdepth 4 -type f \
             \( -name 'inweb' -o -name 'inweb.exe' \) \
             -print || true
 
-          echo "=== Generated build files ==="
+          echo
+          echo "=== Inweb Tangled contents ==="
+          ls -la inweb/Tangled 2>/dev/null || true
+
+          echo
+          echo "=== Inweb generated build files ==="
           find inweb -maxdepth 4 -type f \
             \( -name 'Makefile' -o -name '*.mk' \) \
             -print || true
 
-          echo "=== Tangled contents ==="
-          ls -la inweb/Tangled 2>/dev/null || true
-
-          echo "=== Executable identification ==="
+          echo
+          echo "=== Inweb executable identification ==="
           if [ -f inweb/Tangled/inweb.exe ]; then
             file inweb/Tangled/inweb.exe
+          fi
+
+          echo
+          echo "=================================================="
+          echo "INTEST"
+          echo "=================================================="
+
+          echo
+          echo "=== Intest executables ==="
+          find intest -maxdepth 4 -type f \
+            \( -name 'intest' -o -name 'intest.exe' \) \
+            -print || true
+
+          echo
+          echo "=== Intest Tangled contents ==="
+          ls -la intest/Tangled 2>/dev/null || true
+
+          echo
+          echo "=== Intest generated build files ==="
+          find intest -maxdepth 4 -type f \
+            \( -name 'Makefile' -o -name '*.mk' \) \
+            -print || true
+
+          echo
+          echo "=== Intest executable identification ==="
+          if [ -f intest/Tangled/intest.exe ]; then
+            file intest/Tangled/intest.exe
           fi
