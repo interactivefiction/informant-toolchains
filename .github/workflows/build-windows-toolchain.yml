@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-windows-toolchain:
-    name: Build Inweb 7.2.0 + Intest 2.1.0 — windows target
+    name: Build Inform 10.1.2 Toolchain — Windows
     runs-on: windows-latest
 
     steps:
@@ -65,6 +65,13 @@ jobs:
           ref: intest-2.1.0
           path: intest
 
+      - name: Check out Inform 10.1.2
+        uses: actions/checkout@v4
+        with:
+          repository: interactivefiction/inform
+          ref: inform-10.1.2
+          path: inform
+
       # ----------------------------------------------------------------
       # Build
       # ----------------------------------------------------------------
@@ -82,9 +89,15 @@ jobs:
         run: |
           set -eux
 
-          # Match the established bootstrap sequence.
-          # Intest's first.sh is invoked without a platform argument.
           bash intest/scripts/first.sh
+
+      - name: Build Inform 10.1.2
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          cd inform
+          bash scripts/first.sh
 
       # ----------------------------------------------------------------
       # Inspect
@@ -99,7 +112,7 @@ jobs:
           echo "=================================================="
 
           echo
-          echo "=== Inweb executables ==="
+          echo "=== Inweb executable ==="
           find inweb -maxdepth 4 -type f \
             \( -name 'inweb' -o -name 'inweb.exe' \) \
             -print || true
@@ -109,24 +122,12 @@ jobs:
           ls -la inweb/Tangled 2>/dev/null || true
 
           echo
-          echo "=== Inweb generated build files ==="
-          find inweb -maxdepth 4 -type f \
-            \( -name 'Makefile' -o -name '*.mk' \) \
-            -print || true
-
-          echo
-          echo "=== Inweb executable identification ==="
-          if [ -f inweb/Tangled/inweb.exe ]; then
-            file inweb/Tangled/inweb.exe
-          fi
-
-          echo
           echo "=================================================="
           echo "INTEST"
           echo "=================================================="
 
           echo
-          echo "=== Intest executables ==="
+          echo "=== Intest executable ==="
           find intest -maxdepth 4 -type f \
             \( -name 'intest' -o -name 'intest.exe' \) \
             -print || true
@@ -136,13 +137,51 @@ jobs:
           ls -la intest/Tangled 2>/dev/null || true
 
           echo
-          echo "=== Intest generated build files ==="
-          find intest -maxdepth 4 -type f \
-            \( -name 'Makefile' -o -name '*.mk' \) \
+          echo "=================================================="
+          echo "INFORM 10.1.2"
+          echo "=================================================="
+
+          echo
+          echo "=== Inform7 ==="
+          find inform -maxdepth 5 -type f \
+            \( -name 'inform7' -o -name 'inform7.exe' \) \
             -print || true
 
           echo
-          echo "=== Intest executable identification ==="
-          if [ -f intest/Tangled/intest.exe ]; then
-            file intest/Tangled/intest.exe
+          echo "=== Inform6 ==="
+          find inform -maxdepth 5 -type f \
+            \( -name 'inform6' -o -name 'inform6.exe' \) \
+            -print || true
+
+          echo
+          echo "=== Inblorb ==="
+          find inform -maxdepth 5 -type f \
+            \( -name 'inblorb' -o -name 'inblorb.exe' \) \
+            -print || true
+
+          echo
+          echo "=== Inform7 Tangled ==="
+          ls -la inform/inform7/Tangled 2>/dev/null || true
+
+          echo
+          echo "=== Inform6 Tangled ==="
+          ls -la inform/inform6/Tangled 2>/dev/null || true
+
+          echo
+          echo "=== Inblorb Tangled ==="
+          ls -la inform/inblorb/Tangled 2>/dev/null || true
+
+          echo
+          echo "=== Windows executable identification ==="
+
+          if [ -f inform/inform7/Tangled/inform7.exe ]; then
+            file inform/inform7/Tangled/inform7.exe
+          fi
+
+          if [ -f inform/inform6/Tangled/inform6.exe ]; then
+            file inform/inform6/Tangled/inform6.exe
+          fi
+
+          if [ -f inform/inblorb/Tangled/inblorb.exe ]; then
+            file inform/inblorb/Tangled/inblorb.exe
           fi
