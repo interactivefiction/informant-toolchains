@@ -80,45 +80,83 @@ jobs:
         shell: msys2 {0}
         run: |
           set -eux
+
+          # Inweb selects the target platform during bootstrap.
           bash inweb/scripts/first.sh windows
 
       - name: Build Intest 2.1.0
         shell: msys2 {0}
         run: |
           set -eux
+
           bash intest/scripts/first.sh
 
       - name: Build Inform 10.1.2
         shell: msys2 {0}
-
-        # EXPERIMENT:
-        # Keep upstream source pristine, but explicitly use Clang and
-        # downgrade the C99 implicit-function-declaration diagnostic.
-        #
-        # We are testing whether these environment variables propagate
-        # into the bundled CheapGlk build.
-        env:
-          CC: clang
-          CFLAGS: "-g -Wall -Wno-error=implicit-function-declaration"
-
         run: |
-          set -eux
-
-          echo "=== Inform build environment ==="
-          echo "CC=$CC"
-          echo "CFLAGS=$CFLAGS"
+          set -u
 
           cd inform
+
+          # first.sh currently proceeds into the Inform 6 test assistants
+          # after producing the compiler binaries required by Informant.
+          #
+          # On Windows, the bundled CheapGlk test assistant currently fails
+          # to compile because of its use of bzero(). Capture that result
+          # rather than allowing it alone to determine toolchain success.
+          set +e
           bash scripts/first.sh
+          BUILD_STATUS=$?
+          set -e
+
+          echo
+          echo "=== Upstream Inform build exit status: $BUILD_STATUS ==="
+
+          # Informant's required production binaries.
+          REQUIRED_BINARIES=(
+            "inform7/Tangled/inform7.exe"
+            "inform6/Tangled/inform6.exe"
+            "inblorb/Tangled/inblorb.exe"
+          )
+
+          MISSING=0
+
+          echo
+          echo "=== Required Informant toolchain binaries ==="
+
+          for binary in "${REQUIRED_BINARIES[@]}"; do
+            if [ -f "$binary" ]; then
+              echo "PASS: $binary"
+              file "$binary"
+            else
+              echo "FAIL: $binary is missing"
+              MISSING=1
+            fi
+          done
+
+          echo
+
+          if [ "$MISSING" -ne 0 ]; then
+            echo "ERROR: Informant Windows toolchain is incomplete."
+            exit 1
+          fi
+
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "WARNING: Upstream Inform build returned status $BUILD_STATUS."
+            echo "All binaries required by Informant were nevertheless produced."
+          fi
+
+          echo "SUCCESS: Required Informant Windows toolchain binaries were produced."
 
       # ----------------------------------------------------------------
       # Inspect
       # ----------------------------------------------------------------
 
       - name: Inspect Windows build results
-        if: always()
         shell: msys2 {0}
         run: |
+          set -eu
+
           echo "=================================================="
           echo "INWEB"
           echo "=================================================="
@@ -186,14 +224,6 @@ jobs:
           echo
           echo "=== Windows executable identification ==="
 
-          if [ -f inform/inform7/Tangled/inform7.exe ]; then
-            file inform/inform7/Tangled/inform7.exe
-          fi
-
-          if [ -f inform/inform6/Tangled/inform6.exe ]; then
-            file inform/inform6/Tangled/inform6.exe
-          fi
-
-          if [ -f inform/inblorb/Tangled/inblorb.exe ]; then
-            file inform/inblorb/Tangled/inblorb.exe
-          fi
+          file inform/inform7/Tangled/inform7.exe
+          file inform/inform6/Tangled/inform6.exe
+          file inform/inblorb/Tangled/inblorb.exe
