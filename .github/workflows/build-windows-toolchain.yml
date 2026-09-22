@@ -334,16 +334,6 @@ jobs:
 
           echo
           echo "=== Run Acidity ==="
-          cd inform
-          ../intest/Tangled/intest.exe inform7 -verbose -show Acidity
-
-          echo
-          echo "=== Run Acidity ==="
-          cd inform
-          ../intest/Tangled/intest.exe ./inform7 -verbose -show Acidity
-
-          echo
-          echo "=== Run Acidity ==="
           ./intest/Tangled/intest.exe ./inform/inform7 -verbose -show Acidity
           
       # The full upstream `make check` currently reaches the same
