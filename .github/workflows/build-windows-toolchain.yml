@@ -1,0 +1,105 @@
+name: Windows Toolchain POC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-inweb-windows:
+    name: Build Inweb 7.2.0 — windows target
+    runs-on: windows-latest
+
+    steps:
+      # Prevent Git on the Windows runner from converting shell scripts
+      # to CRLF during checkout.
+      - name: Disable Git CRLF conversion
+        shell: pwsh
+        run: git config --global core.autocrlf input
+
+      - name: Set up MSYS2 CLANG64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          update: true
+          install: >-
+            git
+            make
+            mingw-w64-clang-x86_64-clang
+
+      - name: Show Windows build environment
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          echo "=== System ==="
+          uname -a
+
+          echo "=== Bash ==="
+          bash --version
+
+          echo "=== Make ==="
+          make --version
+
+          echo "=== Clang ==="
+          clang --version
+
+          echo "=== Tool paths ==="
+          which bash
+          which make
+          which clang
+
+      - name: Check out Inweb 7.2.0
+        uses: actions/checkout@v4
+        with:
+          repository: interactivefiction/inweb
+          ref: inweb-7.2.0
+          path: inweb
+
+      - name: Inspect Inweb bootstrap
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          echo "=== Repository ==="
+          git -C inweb status
+          git -C inweb rev-parse HEAD
+
+          echo "=== first.sh ==="
+          ls -l inweb/scripts/first.sh
+          file inweb/scripts/first.sh
+
+          echo "=== Platform references ==="
+          grep -Rni \
+            "windows\|win32\|mingw\|linux\|macos\|macosarm\|macosuniv\|unix" \
+            inweb/scripts \
+            || true
+
+      - name: Build Inweb for Windows
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          # Inweb's bootstrap accepts a platform target.
+          # Exercise the upstream Windows target directly.
+          bash inweb/scripts/first.sh windows
+
+      - name: Inspect Windows build output
+        if: always()
+        shell: msys2 {0}
+        run: |
+          echo "=== Inweb executables ==="
+          find inweb -maxdepth 4 -type f \
+            \( -name 'inweb' -o -name 'inweb.exe' \) \
+            -print || true
+
+          echo "=== Generated build files ==="
+          find inweb -maxdepth 4 -type f \
+            \( -name 'Makefile' -o -name '*.mk' \) \
+            -print || true
+
+          echo "=== Tangled contents ==="
+          ls -la inweb/Tangled 2>/dev/null || true
+
+          echo "=== Executable identification ==="
+          if [ -f inweb/Tangled/inweb.exe ]; then
+            file inweb/Tangled/inweb.exe
+          fi
