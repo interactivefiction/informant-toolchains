@@ -337,6 +337,15 @@ jobs:
           cd inform
           ../intest/Tangled/intest.exe inform7 -verbose -show Acidity
 
+          echo
+          echo "=== Run Acidity ==="
+          cd inform
+          ../intest/Tangled/intest.exe ./inform7 -verbose -show Acidity
+
+          echo
+          echo "=== Run Acidity ==="
+          ./intest/Tangled/intest.exe ./inform/inform7 -verbose -show Acidity
+          
       # The full upstream `make check` currently reaches the same
       # Inform 6 CheapGlk test-assistant portability issue encountered
       # during scripts/first.sh on Windows. Do not make that ancillary
