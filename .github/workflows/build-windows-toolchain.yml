@@ -319,6 +319,21 @@ jobs:
         run: |
           set -eux
 
+          echo "=== Intest binary ==="
+          ls -l intest/Tangled/intest.exe
+          file intest/Tangled/intest.exe
+
+          echo
+          echo "=== Inform7 binary ==="
+          ls -l inform/inform7/Tangled/inform7.exe
+          file inform/inform7/Tangled/inform7.exe
+
+          echo
+          echo "=== Try running Intest directly ==="
+          ./intest/Tangled/intest.exe -help
+
+          echo
+          echo "=== Run Acidity ==="
           cd inform
           ../intest/Tangled/intest.exe inform7 -show Acidity
 
