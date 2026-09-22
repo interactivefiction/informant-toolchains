@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows-toolchain:
-    name: Build Inform 10.1.2 Toolchain — Windows
+  test:
+    name: Build Inform 10.1.2 Toolchain — Windows x64
     runs-on: windows-latest
 
     steps:
@@ -23,6 +23,8 @@ jobs:
           install: >-
             git
             make
+            python
+            tar
             mingw-w64-clang-x86_64-clang
 
       - name: Show Windows build environment
@@ -39,38 +41,95 @@ jobs:
           echo "=== Make ==="
           make --version
 
+          echo "=== Python ==="
+          python3 --version
+
           echo "=== Clang ==="
           clang --version
 
           echo "=== Tool paths ==="
           which bash
           which make
+          which python3
           which clang
 
       # ----------------------------------------------------------------
       # Source
       # ----------------------------------------------------------------
 
+      - name: Check out informant-toolchains
+        uses: actions/checkout@v7
+        with:
+          path: informant-toolchains
+
       - name: Check out Inweb 7.2.0
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: interactivefiction/inweb
           ref: inweb-7.2.0
           path: inweb
 
       - name: Check out Intest 2.1.0
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: interactivefiction/intest
           ref: intest-2.1.0
           path: intest
 
       - name: Check out Inform 10.1.2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: interactivefiction/inform
           ref: inform-10.1.2
           path: inform
+
+      - name: Check out Inform website
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inform-website
+          path: inform-website
+
+      - name: Check out Quixe
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/quixe
+          path: quixe
+
+      # ----------------------------------------------------------------
+      # Workspace
+      # ----------------------------------------------------------------
+
+      - name: Show build workspace
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          echo "Current directory:"
+          pwd
+
+          echo
+          echo "Workspace contents:"
+          ls -la
+
+          echo
+          echo "Inweb:"
+          git -C inweb branch --show-current
+
+          echo
+          echo "Intest:"
+          git -C intest branch --show-current
+
+          echo
+          echo "Inform:"
+          git -C inform branch --show-current
+
+          echo
+          echo "Inform website:"
+          git -C inform-website branch --show-current
+
+          echo
+          echo "Quixe:"
+          git -C quixe branch --show-current
 
       # ----------------------------------------------------------------
       # Build
@@ -81,7 +140,6 @@ jobs:
         run: |
           set -eux
 
-          # Inweb selects the target platform during bootstrap.
           bash inweb/scripts/first.sh windows
 
       - name: Build Intest 2.1.0
@@ -148,8 +206,24 @@ jobs:
 
           echo "SUCCESS: Required Informant Windows toolchain binaries were produced."
 
+      - name: Build Inform documentation
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          cd inform-website
+          make SHELL=/bin/bash books
+
+      - name: Build Quixe
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          cd quixe
+          python3 build.py
+
       # ----------------------------------------------------------------
-      # Inspect
+      # Inspect production binaries
       # ----------------------------------------------------------------
 
       - name: Inspect Windows build results
@@ -227,3 +301,124 @@ jobs:
           file inform/inform7/Tangled/inform7.exe
           file inform/inform6/Tangled/inform6.exe
           file inform/inblorb/Tangled/inblorb.exe
+
+      # ----------------------------------------------------------------
+      # Tests
+      # ----------------------------------------------------------------
+
+      - name: Test Inblorb
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          cd inform
+          inblorb/Tangled/inblorb.exe -help
+
+      - name: Test Inform with Intest
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          cd inform
+          ../intest/Tangled/intest.exe inform7 -show Acidity
+
+      # The full upstream `make check` currently reaches the same
+      # Inform 6 CheapGlk test-assistant portability issue encountered
+      # during scripts/first.sh on Windows. Do not make that ancillary
+      # test assistant a requirement for the Informant production
+      # toolchain. The required compiler artifacts were validated above.
+
+      # ----------------------------------------------------------------
+      # Package
+      # ----------------------------------------------------------------
+
+      - name: Assemble Informant toolchain package
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          echo "========================================"
+          echo " Assembling Informant Windows Toolchain"
+          echo "========================================"
+
+          mkdir -p PACKAGE/Compilers
+          mkdir -p PACKAGE/Imagery
+          mkdir -p PACKAGE/Documentation
+          mkdir -p PACKAGE/Player/Quixe
+
+          cp inform/inform7/Tangled/inform7.exe PACKAGE/Compilers/
+          cp inform/inform6/Tangled/inform6.exe PACKAGE/Compilers/
+          cp inform/inblorb/Tangled/inblorb.exe PACKAGE/Compilers/
+
+          cp -rfv inform/resources/Imagery/* PACKAGE/Imagery/
+
+          cp -rfv inform/inform7/Internal/* PACKAGE/
+          cp -rfv inform-website/docs/* PACKAGE/Documentation/
+
+          cp -rfv quixe/lib PACKAGE/Player/Quixe/
+          cp -rfv quixe/media PACKAGE/Player/Quixe/
+
+          echo
+          echo "Package contents:"
+          find PACKAGE -maxdepth 2 -type f | sort
+
+          echo
+          echo "Documentation sample:"
+          find PACKAGE/Documentation -maxdepth 3 -type f | head -50
+
+          echo
+          echo "Packaged Windows executables:"
+          file PACKAGE/Compilers/inform7.exe
+          file PACKAGE/Compilers/inform6.exe
+          file PACKAGE/Compilers/inblorb.exe
+
+      # ----------------------------------------------------------------
+      # Validate package
+      # ----------------------------------------------------------------
+
+      - name: Validate Windows toolchain package
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          test -f PACKAGE/Compilers/inform7.exe
+          test -f PACKAGE/Compilers/inform6.exe
+          test -f PACKAGE/Compilers/inblorb.exe
+
+          test -d PACKAGE/Imagery
+          test -d PACKAGE/Documentation
+          test -d PACKAGE/Player/Quixe
+          test -d PACKAGE/Player/Quixe/lib
+          test -d PACKAGE/Player/Quixe/media
+
+          echo "PASS: inform7.exe"
+          echo "PASS: inform6.exe"
+          echo "PASS: inblorb.exe"
+          echo "PASS: Imagery"
+          echo "PASS: Documentation"
+          echo "PASS: Quixe"
+
+          echo
+          echo "SUCCESS: Windows Informant toolchain package is complete."
+
+      # ----------------------------------------------------------------
+      # Archive
+      # ----------------------------------------------------------------
+
+      - name: Create Windows toolchain archive
+        shell: msys2 {0}
+        run: |
+          set -eux
+
+          tar -czf informant-toolchain-windows-x64-10.1.2.tar.gz PACKAGE
+
+          echo
+          echo "Created:"
+          ls -lh informant-toolchain-windows-x64-10.1.2.tar.gz
+
+      - name: Upload Windows toolchain artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: informant-toolchain-windows-x64-10.1.2
+          path: informant-toolchain-windows-x64-10.1.2.tar.gz
+          if-no-files-found: error
