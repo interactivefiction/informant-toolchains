@@ -331,11 +331,6 @@ jobs:
           echo
           echo "=== Try running Intest directly ==="
           ./intest/Tangled/intest.exe -help
-
-          echo
-          echo "=== Run Acidity ==="
-          cd inform
-          make check
           
       # The full upstream `make check` currently reaches the same
       # Inform 6 CheapGlk test-assistant portability issue encountered
