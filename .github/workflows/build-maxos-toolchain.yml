@@ -1,0 +1,243 @@
+name: Build Inform Toolchain - macOS Universal
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos-universal:
+    name: Build macOS Universal Toolchain
+    runs-on: macos-latest
+
+    steps:
+      # ------------------------------------------------------------
+      # Environment information
+      # ------------------------------------------------------------
+
+      - name: Show build environment
+        run: |
+          echo "=== uname ==="
+          uname -a
+
+          echo
+          echo "=== macOS ==="
+          sw_vers
+
+          echo
+          echo "=== Xcode ==="
+          xcodebuild -version
+
+          echo
+          echo "=== Clang ==="
+          clang --version
+
+          echo
+          echo "=== Architecture ==="
+          uname -m
+
+      # ------------------------------------------------------------
+      # Checkout pinned toolchain sources
+      # ------------------------------------------------------------
+
+      - name: Checkout Inweb 7.2.0
+        uses: actions/checkout@v4
+        with:
+          repository: interactivefiction/inweb
+          ref: inweb-7.2.0
+          path: inweb
+
+      - name: Checkout Intest 2.1.0
+        uses: actions/checkout@v4
+        with:
+          repository: interactivefiction/intest
+          ref: intest-2.1.0
+          path: intest
+
+      - name: Checkout Inform 10.1.2
+        uses: actions/checkout@v4
+        with:
+          repository: interactivefiction/inform
+          ref: inform-10.1.2
+          path: inform
+
+      # ------------------------------------------------------------
+      # Bootstrap
+      #
+      # IMPORTANT:
+      # This is intentionally using the upstream macosuniv target.
+      # Do not modify compiler flags or generated Makefiles here.
+      # ------------------------------------------------------------
+
+      - name: Bootstrap Inweb for macOS Universal
+        run: |
+          bash inweb/scripts/first.sh macosuniv
+
+      - name: Bootstrap Intest
+        run: |
+          bash intest/scripts/first.sh
+
+      - name: Bootstrap Inform
+        working-directory: inform
+        run: |
+          bash scripts/first.sh
+
+      # ------------------------------------------------------------
+      # Inspect resulting executables
+      # ------------------------------------------------------------
+
+      - name: Inspect compiler binaries
+        run: |
+          echo "========================================"
+          echo "inform7"
+          echo "========================================"
+
+          file inform/inform7/Tangled/inform7
+          lipo -info inform/inform7/Tangled/inform7
+
+          echo
+          echo "========================================"
+          echo "inform6"
+          echo "========================================"
+
+          file inform/inform6/Tangled/inform6
+          lipo -info inform/inform6/Tangled/inform6
+
+          echo
+          echo "========================================"
+          echo "inblorb"
+          echo "========================================"
+
+          file inform/inblorb/Tangled/inblorb
+          lipo -info inform/inblorb/Tangled/inblorb
+
+      # ------------------------------------------------------------
+      # Basic executable smoke tests
+      # ------------------------------------------------------------
+
+      - name: Smoke test inform7
+        run: |
+          inform/inform7/Tangled/inform7 -help
+
+      - name: Smoke test inform6
+        run: |
+          inform/inform6/Tangled/inform6 -h || true
+
+      - name: Smoke test inblorb
+        run: |
+          inform/inblorb/Tangled/inblorb -help
+
+      # ------------------------------------------------------------
+      # Functional Inform test
+      #
+      # Build success is NOT sufficient.
+      # We require inform7 to process an actual Inform project.
+      # ------------------------------------------------------------
+
+      - name: Create minimal Inform project
+        run: |
+          mkdir -p SmokeTest.inform/Source
+
+          cat > SmokeTest.inform/Source/story.ni <<'EOF'
+          "Smoke Test"
+
+          Lab is a room.
+          EOF
+
+          echo "=== story.ni ==="
+          cat SmokeTest.inform/Source/story.ni
+
+      - name: Compile minimal project with inform7
+        run: |
+          inform/inform7/Tangled/inform7 \
+            -internal inform/inform7/Internal \
+            -format=Inform6/32d \
+            -project "$PWD/SmokeTest.inform"
+
+      - name: Verify auto.inf
+        run: |
+          test -f SmokeTest.inform/Build/auto.inf
+
+          echo "auto.inf generated successfully:"
+          ls -lh SmokeTest.inform/Build/auto.inf
+
+      - name: Compile minimal project with inform6
+        run: |
+          inform/inform6/Tangled/inform6 \
+            -wxE2kSDG \
+            '$huge' \
+            SmokeTest.inform/Build/auto.inf \
+            SmokeTest.inform/Build/output-test.ulx
+
+      - name: Verify story output
+        run: |
+          test -f SmokeTest.inform/Build/output-test.ulx
+
+          echo "========================================"
+          echo "FUNCTIONAL SMOKE TEST PASSED"
+          echo "========================================"
+
+          file SmokeTest.inform/Build/output-test.ulx
+          ls -lh SmokeTest.inform/Build/output-test.ulx
+
+      # ------------------------------------------------------------
+      # Package toolchain
+      #
+      # Match the basic Informant package structure:
+      #
+      # PACKAGE/
+      #   Compilers/
+      #       inform7
+      #       inform6
+      #       inblorb
+      #   [contents of inform7/Internal]
+      # ------------------------------------------------------------
+
+      - name: Create Informant toolchain package
+        run: |
+          mkdir -p PACKAGE/Compilers
+
+          cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
+          cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
+          cp inform/inblorb/Tangled/inblorb PACKAGE/Compilers/
+
+          cp -R inform/inform7/Internal/. PACKAGE/
+
+          echo "=== Package compilers ==="
+          ls -lh PACKAGE/Compilers
+
+          echo
+          echo "=== Final architecture check ==="
+
+          file PACKAGE/Compilers/inform7
+          lipo -info PACKAGE/Compilers/inform7
+
+          file PACKAGE/Compilers/inform6
+          lipo -info PACKAGE/Compilers/inform6
+
+          file PACKAGE/Compilers/inblorb
+          lipo -info PACKAGE/Compilers/inblorb
+
+      # ------------------------------------------------------------
+      # Archive
+      # ------------------------------------------------------------
+
+      - name: Create archive
+        run: |
+          tar -czf informant-toolchain-macos-universal-10.1.2.tar.gz \
+            -C PACKAGE .
+
+          shasum -a 256 \
+            informant-toolchain-macos-universal-10.1.2.tar.gz
+
+          ls -lh \
+            informant-toolchain-macos-universal-10.1.2.tar.gz
+
+      # ------------------------------------------------------------
+      # Preserve artifact even if we later add more tests.
+      # ------------------------------------------------------------
+
+      - name: Upload macOS Universal toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: informant-toolchain-macos-universal-10.1.2
+          path: informant-toolchain-macos-universal-10.1.2.tar.gz
+          if-no-files-found: error
