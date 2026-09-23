@@ -1,4 +1,4 @@
-name: Build Inform Toolchain - macOS Universal
+name: Build macOSuniv Informant Toolchain
 
 on:
   workflow_dispatch:
