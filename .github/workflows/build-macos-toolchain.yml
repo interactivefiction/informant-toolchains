@@ -1,4 +1,4 @@
-name: Build macOSuniv Informant Toolchain
+name: Build macOS Universal Informant Toolchain
 
 on:
   workflow_dispatch:
@@ -10,11 +10,74 @@ jobs:
 
     steps:
       # ------------------------------------------------------------
-      # Environment information
+      # Check out Informant toolchain repository
+      # ------------------------------------------------------------
+
+      - name: Check out informant-toolchains
+        uses: actions/checkout@v7
+        with:
+          path: informant-toolchains
+
+      # ------------------------------------------------------------
+      # Check out pinned Inform toolchain sources
+      # ------------------------------------------------------------
+
+      - name: Check out Inweb 7.2.0
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inweb
+          ref: inweb-7.2.0
+          path: inweb
+
+      - name: Check out Intest 2.1.0
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/intest
+          ref: intest-2.1.0
+          path: intest
+
+      - name: Check out Inform 10.1.2
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inform
+          ref: inform-10.1.2
+          path: inform
+
+      # ------------------------------------------------------------
+      # Check out package components
+      # ------------------------------------------------------------
+
+      - name: Check out Inform website
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/inform-website
+          path: inform-website
+
+      - name: Check out Quixe
+        uses: actions/checkout@v7
+        with:
+          repository: interactivefiction/quixe
+          path: quixe
+
+      # ------------------------------------------------------------
+      # Environment / workspace information
       # ------------------------------------------------------------
 
       - name: Show build environment
         run: |
+          echo "========================================"
+          echo " macOS Build Environment"
+          echo "========================================"
+
+          echo
+          echo "Current directory:"
+          pwd
+
+          echo
+          echo "Workspace contents:"
+          ls -la
+
+          echo
           echo "=== uname ==="
           uname -a
 
@@ -31,188 +94,359 @@ jobs:
           clang --version
 
           echo
-          echo "=== Architecture ==="
+          echo "=== Host architecture ==="
           uname -m
 
+          echo
+          echo "=== Inweb ==="
+          git -C inweb branch --show-current
+          git -C inweb rev-parse HEAD
+
+          echo
+          echo "=== Intest ==="
+          git -C intest branch --show-current
+          git -C intest rev-parse HEAD
+
+          echo
+          echo "=== Inform ==="
+          git -C inform branch --show-current
+          git -C inform rev-parse HEAD
+
+          echo
+          echo "=== Inform website ==="
+          git -C inform-website branch --show-current
+          git -C inform-website rev-parse HEAD
+
+          echo
+          echo "=== Quixe ==="
+          git -C quixe branch --show-current
+          git -C quixe rev-parse HEAD
+
       # ------------------------------------------------------------
-      # Checkout pinned toolchain sources
-      # ------------------------------------------------------------
-
-      - name: Checkout Inweb 7.2.0
-        uses: actions/checkout@v4
-        with:
-          repository: interactivefiction/inweb
-          ref: inweb-7.2.0
-          path: inweb
-
-      - name: Checkout Intest 2.1.0
-        uses: actions/checkout@v4
-        with:
-          repository: interactivefiction/intest
-          ref: intest-2.1.0
-          path: intest
-
-      - name: Checkout Inform 10.1.2
-        uses: actions/checkout@v4
-        with:
-          repository: interactivefiction/inform
-          ref: inform-10.1.2
-          path: inform
-
-      # ------------------------------------------------------------
-      # Bootstrap
+      # Build compiler toolchain
       #
-      # Use the upstream macosuniv target exactly as supplied.
-      # No compiler flag changes or generated Makefile changes.
+      # IMPORTANT:
+      # Use the upstream macosuniv target without modifying compiler
+      # flags or generated Makefiles.
       # ------------------------------------------------------------
 
-      - name: Bootstrap Inweb for macOS Universal
+      - name: Build Inweb for macOS Universal
         run: |
           bash inweb/scripts/first.sh macosuniv
 
-      - name: Bootstrap Intest
+      - name: Build Intest
         run: |
           bash intest/scripts/first.sh
 
-      - name: Bootstrap Inform
-        working-directory: inform
+      - name: Build Inform
         run: |
+          cd inform
           bash scripts/first.sh
 
       # ------------------------------------------------------------
-      # Inspect source-tree build products
+      # Build documentation
       # ------------------------------------------------------------
 
-      - name: Inspect built compiler binaries
+      - name: Build Inform documentation
+        run: |
+          cd inform-website
+          make SHELL=/bin/bash books
+
+      # ------------------------------------------------------------
+      # Build Quixe
+      # ------------------------------------------------------------
+
+      - name: Build Quixe
+        run: |
+          cd quixe
+          python3 build.py
+
+      # ------------------------------------------------------------
+      # Inspect compiler binaries
+      #
+      # macosuniv should produce universal Mach-O executables.
+      # Record exactly what upstream produced.
+      # ------------------------------------------------------------
+
+      - name: Inspect compiler binaries
         run: |
           echo "========================================"
-          echo "inform7"
+          echo " inform7"
           echo "========================================"
+
           file inform/inform7/Tangled/inform7
           lipo -info inform/inform7/Tangled/inform7
 
           echo
           echo "========================================"
-          echo "inform6"
+          echo " inform6"
           echo "========================================"
+
           file inform/inform6/Tangled/inform6
           lipo -info inform/inform6/Tangled/inform6
 
           echo
           echo "========================================"
-          echo "inblorb"
+          echo " inblorb"
           echo "========================================"
+
           file inform/inblorb/Tangled/inblorb
           lipo -info inform/inblorb/Tangled/inblorb
 
       # ------------------------------------------------------------
-      # Basic executable smoke tests
+      # Basic compiler tests
       # ------------------------------------------------------------
 
-      - name: Smoke test built executables
+      - name: Test Inblorb
         run: |
-          echo "=== inform7 ==="
-          inform/inform7/Tangled/inform7 -help
+          cd inform
+          inblorb/Tangled/inblorb -help
 
-          echo
-          echo "=== inform6 ==="
-          inform/inform6/Tangled/inform6 -h || true
+      - name: Test Inform with Intest
+        run: |
+          cd inform
+          ../intest/Tangled/intest inform7 -show Acidity
 
-          echo
-          echo "=== inblorb ==="
-          inform/inblorb/Tangled/inblorb -help
+      - name: Run Inform test suite
+        run: |
+          cd inform
+          make check
 
       # ------------------------------------------------------------
-      # Create the actual Informant package FIRST
+      # Assemble complete Informant package
+      #
+      # Keep this conceptually identical to the Linux package.
       #
       # PACKAGE/
       #   Compilers/
-      #       inform7
-      #       inform6
-      #       inblorb
-      #   [contents of inform7/Internal]
-      #
-      # Functional testing below uses ONLY this package.
+      #   Documentation/
+      #   Imagery/
+      #   Player/
+      #       Quixe/
+      #   [Inform Internal contents]
       # ------------------------------------------------------------
 
-      - name: Create Informant toolchain package
+      - name: Assemble Informant toolchain package
         run: |
           set -euo pipefail
 
+          echo "========================================"
+          echo " Assembling macOS Universal Informant Toolchain"
+          echo "========================================"
+
           rm -rf PACKAGE
+
           mkdir -p PACKAGE/Compilers
+          mkdir -p PACKAGE/Imagery
+          mkdir -p PACKAGE/Documentation
+          mkdir -p PACKAGE/Player/Quixe
+
+          # --------------------------------------------------------
+          # Compiler executables
+          # --------------------------------------------------------
 
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
           cp inform/inblorb/Tangled/inblorb PACKAGE/Compilers/
-          
-          cp -R inform/inform7/Internal/. PACKAGE/
-          rm PACKAGE/Extensions/Emily\ Short/Skeleton\ Keys.i7x
 
-          echo "=== Package root ==="
-          ls -la PACKAGE
+          # --------------------------------------------------------
+          # Inform imagery
+          # --------------------------------------------------------
+
+          cp -rfv inform/resources/Imagery/* PACKAGE/Imagery/
+
+          # --------------------------------------------------------
+          # Inform runtime/compiler resources
+          # --------------------------------------------------------
+
+          cp -rfv inform/inform7/Internal/* PACKAGE/
+
+          # Temporary compatibility experiment:
+          # Skeleton Keys conflicts with the 10.1.2 Standard Rules.
+          rm -f "PACKAGE/Extensions/Emily Short/Skeleton Keys.i7x"
+
+          # --------------------------------------------------------
+          # Inform documentation
+          # --------------------------------------------------------
+
+          cp -rfv inform-website/docs/* PACKAGE/Documentation/
+
+          # --------------------------------------------------------
+          # Quixe player
+          # --------------------------------------------------------
+
+          cp -rfv quixe/lib PACKAGE/Player/Quixe/
+          cp -rfv quixe/media PACKAGE/Player/Quixe/
+
+          # --------------------------------------------------------
+          # Package diagnostics
+          # --------------------------------------------------------
 
           echo
-          echo "=== Package compilers ==="
-          ls -lh PACKAGE/Compilers
+          echo "========================================"
+          echo " Package contents"
+          echo "========================================"
+
+          find PACKAGE -maxdepth 2 -type f | sort
 
           echo
-          echo "=== Packaged binary architectures ==="
+          echo "========================================"
+          echo " Documentation sample"
+          echo "========================================"
 
+          find PACKAGE/Documentation -maxdepth 3 -type f | head -50
+
+          echo
+          echo "========================================"
+          echo " Packaged compiler architectures"
+          echo "========================================"
+
+          echo
+          echo "inform7:"
           file PACKAGE/Compilers/inform7
           lipo -info PACKAGE/Compilers/inform7
 
+          echo
+          echo "inform6:"
           file PACKAGE/Compilers/inform6
           lipo -info PACKAGE/Compilers/inform6
 
+          echo
+          echo "inblorb:"
           file PACKAGE/Compilers/inblorb
           lipo -info PACKAGE/Compilers/inblorb
 
       # ------------------------------------------------------------
-      # Smoke-test ONLY the packaged executables/resources.
+      # Smoke test packaged executables
+      #
+      # These are the actual binaries that will be distributed.
       # ------------------------------------------------------------
 
       - name: Smoke test packaged executables
         run: |
           set -euo pipefail
 
-          echo "=== packaged inform7 ==="
+          echo "========================================"
+          echo " Packaged inform7"
+          echo "========================================"
+
           PACKAGE/Compilers/inform7 -help
 
           echo
-          echo "=== packaged inform6 ==="
+          echo "========================================"
+          echo " Packaged inform6"
+          echo "========================================"
+
           PACKAGE/Compilers/inform6 -h || true
 
           echo
-          echo "=== packaged inblorb ==="
+          echo "========================================"
+          echo " Packaged inblorb"
+          echo "========================================"
+
           PACKAGE/Compilers/inblorb -help
 
       # ------------------------------------------------------------
-      # Archive the SAME package that passed the functional test.
+      # Functional test of packaged toolchain
+      #
+      # Compile a real Inform project using ONLY the assembled
+      # Informant package.
       # ------------------------------------------------------------
 
-      - name: Create archive
+      - name: Create packaged toolchain smoke test
         run: |
           set -euo pipefail
 
-          tar -czf informant-toolchain-macos-universal-10.1.2.tar.gz \
-            -C PACKAGE .
+          rm -rf SmokeTest.inform
+          mkdir -p SmokeTest.inform/Source
 
-          echo "=== SHA-256 ==="
-          shasum -a 256 \
-            informant-toolchain-macos-universal-10.1.2.tar.gz
+          cat > SmokeTest.inform/Source/story.ni <<'EOF'
+          "Smoke Test"
+
+          Lab is a room.
+          EOF
+
+          echo "=== story.ni ==="
+          cat SmokeTest.inform/Source/story.ni
+
+      - name: Compile smoke test with packaged inform7
+        run: |
+          set -euo pipefail
+
+          PACKAGE_ROOT="$PWD/PACKAGE"
+          PROJECT_ROOT="$PWD/SmokeTest.inform"
+
+          "$PACKAGE_ROOT/Compilers/inform7" \
+            -internal "$PACKAGE_ROOT" \
+            -format=Inform6/32d \
+            -project "$PROJECT_ROOT"
+
+      - name: Verify packaged inform7 output
+        run: |
+          set -euo pipefail
+
+          test -f SmokeTest.inform/Build/auto.inf
+
+          echo "========================================"
+          echo " PACKAGED INFORM7 TEST PASSED"
+          echo "========================================"
+
+          ls -lh SmokeTest.inform/Build/auto.inf
+
+      - name: Compile smoke test with packaged inform6
+        run: |
+          set -euo pipefail
+
+          "$PWD/PACKAGE/Compilers/inform6" \
+            -wxE2kSDG \
+            '$huge' \
+            "$PWD/SmokeTest.inform/Build/auto.inf" \
+            "$PWD/SmokeTest.inform/Build/output-test.ulx"
+
+      - name: Verify packaged story output
+        run: |
+          set -euo pipefail
+
+          test -f SmokeTest.inform/Build/output-test.ulx
+
+          echo "========================================"
+          echo " PACKAGED TOOLCHAIN FUNCTIONAL TEST PASSED"
+          echo "========================================"
+
+          file SmokeTest.inform/Build/output-test.ulx
+          ls -lh SmokeTest.inform/Build/output-test.ulx
+
+      # ------------------------------------------------------------
+      # Create distributable archive
+      #
+      # Match Linux convention: archive contains PACKAGE/ itself.
+      # ------------------------------------------------------------
+
+      - name: Create macOS Universal toolchain archive
+        run: |
+          set -euo pipefail
+
+          ARCHIVE="informant-toolchain-macos-universal-10.1.2.tar.gz"
+
+          tar -czf "$ARCHIVE" PACKAGE
 
           echo
-          echo "=== Archive ==="
-          ls -lh \
-            informant-toolchain-macos-universal-10.1.2.tar.gz
+          echo "========================================"
+          echo " SHA-256"
+          echo "========================================"
+
+          shasum -a 256 "$ARCHIVE"
+
+          echo
+          echo "Created:"
+          ls -lh "$ARCHIVE"
 
       # ------------------------------------------------------------
-      # Upload only after the exact packaged toolchain has passed.
+      # Upload artifact
       # ------------------------------------------------------------
 
-      - name: Upload macOS Universal toolchain
-        uses: actions/upload-artifact@v4
+      - name: Upload macOS Universal toolchain artifact
+        uses: actions/upload-artifact@v6
         with:
           name: informant-toolchain-macos-universal-10.1.2
           path: informant-toolchain-macos-universal-10.1.2.tar.gz
