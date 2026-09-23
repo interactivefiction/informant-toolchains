@@ -62,9 +62,8 @@ jobs:
       # ------------------------------------------------------------
       # Bootstrap
       #
-      # IMPORTANT:
-      # This is intentionally using the upstream macosuniv target.
-      # Do not modify compiler flags or generated Makefiles here.
+      # Use the upstream macosuniv target exactly as supplied.
+      # No compiler flag changes or generated Makefile changes.
       # ------------------------------------------------------------
 
       - name: Bootstrap Inweb for macOS Universal
@@ -81,15 +80,14 @@ jobs:
           bash scripts/first.sh
 
       # ------------------------------------------------------------
-      # Inspect resulting executables
+      # Inspect source-tree build products
       # ------------------------------------------------------------
 
-      - name: Inspect compiler binaries
+      - name: Inspect built compiler binaries
         run: |
           echo "========================================"
           echo "inform7"
           echo "========================================"
-
           file inform/inform7/Tangled/inform7
           lipo -info inform/inform7/Tangled/inform7
 
@@ -97,7 +95,6 @@ jobs:
           echo "========================================"
           echo "inform6"
           echo "========================================"
-
           file inform/inform6/Tangled/inform6
           lipo -info inform/inform6/Tangled/inform6
 
@@ -105,7 +102,6 @@ jobs:
           echo "========================================"
           echo "inblorb"
           echo "========================================"
-
           file inform/inblorb/Tangled/inblorb
           lipo -info inform/inblorb/Tangled/inblorb
 
@@ -113,75 +109,21 @@ jobs:
       # Basic executable smoke tests
       # ------------------------------------------------------------
 
-      - name: Smoke test inform7
+      - name: Smoke test built executables
         run: |
+          echo "=== inform7 ==="
           inform/inform7/Tangled/inform7 -help
 
-      - name: Smoke test inform6
-        run: |
+          echo
+          echo "=== inform6 ==="
           inform/inform6/Tangled/inform6 -h || true
 
-      - name: Smoke test inblorb
-        run: |
+          echo
+          echo "=== inblorb ==="
           inform/inblorb/Tangled/inblorb -help
 
       # ------------------------------------------------------------
-      # Functional Inform test
-      #
-      # Build success is NOT sufficient.
-      # We require inform7 to process an actual Inform project.
-      # ------------------------------------------------------------
-
-      - name: Create minimal Inform project
-        run: |
-          mkdir -p SmokeTest.inform/Source
-
-          cat > SmokeTest.inform/Source/story.ni <<'EOF'
-          "Smoke Test"
-
-          Lab is a room.
-          EOF
-
-          echo "=== story.ni ==="
-          cat SmokeTest.inform/Source/story.ni
-
-      - name: Compile minimal project with inform7
-        run: |
-          inform/inform7/Tangled/inform7 \
-            -internal inform/inform7/Internal \
-            -format=Inform6/32d \
-            -project "$PWD/SmokeTest.inform"
-
-      - name: Verify auto.inf
-        run: |
-          test -f SmokeTest.inform/Build/auto.inf
-
-          echo "auto.inf generated successfully:"
-          ls -lh SmokeTest.inform/Build/auto.inf
-
-      - name: Compile minimal project with inform6
-        run: |
-          inform/inform6/Tangled/inform6 \
-            -wxE2kSDG \
-            '$huge' \
-            SmokeTest.inform/Build/auto.inf \
-            SmokeTest.inform/Build/output-test.ulx
-
-      - name: Verify story output
-        run: |
-          test -f SmokeTest.inform/Build/output-test.ulx
-
-          echo "========================================"
-          echo "FUNCTIONAL SMOKE TEST PASSED"
-          echo "========================================"
-
-          file SmokeTest.inform/Build/output-test.ulx
-          ls -lh SmokeTest.inform/Build/output-test.ulx
-
-      # ------------------------------------------------------------
-      # Package toolchain
-      #
-      # Match the basic Informant package structure:
+      # Create the actual Informant package FIRST
       #
       # PACKAGE/
       #   Compilers/
@@ -189,10 +131,15 @@ jobs:
       #       inform6
       #       inblorb
       #   [contents of inform7/Internal]
+      #
+      # Functional testing below uses ONLY this package.
       # ------------------------------------------------------------
 
       - name: Create Informant toolchain package
         run: |
+          set -euo pipefail
+
+          rm -rf PACKAGE
           mkdir -p PACKAGE/Compilers
 
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
@@ -201,11 +148,15 @@ jobs:
 
           cp -R inform/inform7/Internal/. PACKAGE/
 
+          echo "=== Package root ==="
+          ls -la PACKAGE
+
+          echo
           echo "=== Package compilers ==="
           ls -lh PACKAGE/Compilers
 
           echo
-          echo "=== Final architecture check ==="
+          echo "=== Packaged binary architectures ==="
 
           file PACKAGE/Compilers/inform7
           lipo -info PACKAGE/Compilers/inform7
@@ -217,22 +168,135 @@ jobs:
           lipo -info PACKAGE/Compilers/inblorb
 
       # ------------------------------------------------------------
-      # Archive
+      # Smoke-test ONLY the packaged executables/resources.
+      # ------------------------------------------------------------
+
+      - name: Smoke test packaged executables
+        run: |
+          set -euo pipefail
+
+          echo "=== packaged inform7 ==="
+          PACKAGE/Compilers/inform7 -help
+
+          echo
+          echo "=== packaged inform6 ==="
+          PACKAGE/Compilers/inform6 -h || true
+
+          echo
+          echo "=== packaged inblorb ==="
+          PACKAGE/Compilers/inblorb -help
+
+      # ------------------------------------------------------------
+      # Create minimal Inform project outside the source tree.
+      # ------------------------------------------------------------
+
+      - name: Create packaged-toolchain smoke-test project
+        run: |
+          set -euo pipefail
+
+          rm -rf SmokeTest.inform
+          mkdir -p SmokeTest.inform/Source
+
+          cat > SmokeTest.inform/Source/story.ni <<'EOF'
+          "Smoke Test"
+
+          Lab is a room.
+          EOF
+
+          echo "=== story.ni ==="
+          cat SmokeTest.inform/Source/story.ni
+
+      # ------------------------------------------------------------
+      # Functional test: packaged inform7 + packaged Internal.
+      #
+      # This is the important acceptance test.
+      # Nothing under inform/... is used as the compiler or
+      # -internal path here.
+      # ------------------------------------------------------------
+
+      - name: Compile project with packaged inform7
+        run: |
+          set -euo pipefail
+
+          PACKAGE_ROOT="$PWD/PACKAGE"
+          PROJECT_ROOT="$PWD/SmokeTest.inform"
+
+          echo "=== Toolchain ==="
+          echo "$PACKAGE_ROOT"
+
+          echo
+          echo "=== Project ==="
+          echo "$PROJECT_ROOT"
+
+          echo
+          echo "=== Running packaged inform7 ==="
+
+          "$PACKAGE_ROOT/Compilers/inform7" \
+            -internal "$PACKAGE_ROOT" \
+            -format=Inform6/32d \
+            -project "$PROJECT_ROOT" -release
+
+      - name: Verify packaged inform7 output
+        run: |
+          set -euo pipefail
+
+          test -f SmokeTest.inform/Build/auto.inf
+
+          echo "========================================"
+          echo "inform7 FUNCTIONAL TEST PASSED"
+          echo "========================================"
+
+          ls -lh SmokeTest.inform/Build/auto.inf
+
+      # ------------------------------------------------------------
+      # Functional test: packaged inform6.
+      # ------------------------------------------------------------
+
+      - name: Compile project with packaged inform6
+        run: |
+          set -euo pipefail
+
+          "$PWD/PACKAGE/Compilers/inform6" \
+            -wxE2kSDG \
+            '$huge' \
+            "$PWD/SmokeTest.inform/Build/auto.inf" \
+            "$PWD/SmokeTest.inform/Build/output-test.ulx"
+
+      - name: Verify final story output
+        run: |
+          set -euo pipefail
+
+          test -f SmokeTest.inform/Build/output-test.ulx
+
+          echo "========================================"
+          echo "PACKAGED TOOLCHAIN FUNCTIONAL TEST PASSED"
+          echo "========================================"
+
+          file SmokeTest.inform/Build/output-test.ulx
+          ls -lh SmokeTest.inform/Build/output-test.ulx
+
+      # ------------------------------------------------------------
+      # Archive the SAME package that passed the functional test.
       # ------------------------------------------------------------
 
       - name: Create archive
         run: |
+          set -euo pipefail
+
           tar -czf informant-toolchain-macos-universal-10.1.2.tar.gz \
             -C PACKAGE .
 
+          echo "=== SHA-256 ==="
           shasum -a 256 \
             informant-toolchain-macos-universal-10.1.2.tar.gz
 
+          echo
+          echo "=== Archive ==="
           ls -lh \
             informant-toolchain-macos-universal-10.1.2.tar.gz
 
       # ------------------------------------------------------------
-      # Preserve artifact even if we later add more tests.
+      # Upload only after the exact packaged toolchain has passed.
       # ------------------------------------------------------------
 
       - name: Upload macOS Universal toolchain
