@@ -145,8 +145,9 @@ jobs:
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
           cp inform/inblorb/Tangled/inblorb PACKAGE/Compilers/
-
+          
           cp -R inform/inform7/Internal/. PACKAGE/
+          rm PACKAGE/Extensions/Emily\ Short/Skeleton\ Keys.i7x
 
           echo "=== Package root ==="
           ls -la PACKAGE
