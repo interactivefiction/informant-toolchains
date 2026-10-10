@@ -436,6 +436,11 @@ jobs:
           mkdir -p PACKAGE/Imagery
           mkdir -p PACKAGE/Documentation
           mkdir -p PACKAGE/Player/Quixe
+          mkdir -p PACKAGE/Redist
+
+          cp inform/LICENSE PACKAGE/REDIST/Inform-LICENSE
+          cp inform-website/LICENSE PACKAGE/REDIST/Inform-Website-LICENSE
+          cp quixe/LICENSE PACKAGE/REDIST/Quixe-LICENSE
 
           cp inform/inform7/Tangled/inform7.exe PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6.exe PACKAGE/Compilers/
