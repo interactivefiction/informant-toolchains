@@ -444,6 +444,11 @@ jobs:
           cp -rfv inform/resources/Imagery/* PACKAGE/Imagery/
 
           cp -rfv inform/inform7/Internal/* PACKAGE/
+
+          # Temporary compatibility experiment:
+          # Skeleton Keys conflicts with the 10.1.2 Standard Rules.
+          rm -f "PACKAGE/Extensions/Emily Short/Skeleton Keys.i7x"
+          
           cp -rfv inform-website/docs/* PACKAGE/Documentation/
 
           cp -rfv quixe/lib PACKAGE/Player/Quixe/
