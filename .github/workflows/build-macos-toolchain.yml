@@ -240,6 +240,15 @@ jobs:
           mkdir -p PACKAGE/Imagery
           mkdir -p PACKAGE/Documentation
           mkdir -p PACKAGE/Player/Quixe
+          mkdir -p PACKAGE/Redist
+
+          # --------------------------------------------------------
+          # Redist Licenses
+          # --------------------------------------------------------
+          
+          cp inform/LICENSE PACKAGE/REDIST/Inform-LICENSE
+          cp inform-website/LICENSE PACKAGE/REDIST/Inform-Website-LICENSE
+          cp quixe/LICENSE PACKAGE/REDIST/Quixe-LICENSE
 
           # --------------------------------------------------------
           # Compiler executables
