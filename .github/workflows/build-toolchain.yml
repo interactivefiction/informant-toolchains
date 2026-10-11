@@ -129,9 +129,9 @@ jobs:
           # Redist Licenses
           # --------------------------------------------------------
           
-          cp inform/LICENSE PACKAGE/REDIST/Inform-LICENSE
-          cp inform-website/LICENSE PACKAGE/REDIST/Inform-Website-LICENSE
-          cp quixe/LICENSE PACKAGE/REDIST/Quixe-LICENSE
+          cp inform/LICENSE PACKAGE/Redist/Inform-LICENSE
+          cp inform-website/LICENSE PACKAGE/Redist/Inform-Website-LICENSE
+          cp quixe/LICENSE PACKAGE/Redist/Quixe-LICENSE
 
           cp inform/inform7/Tangled/inform7 PACKAGE/Compilers/
           cp inform/inform6/Tangled/inform6 PACKAGE/Compilers/
