@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: Artistic-2.0
+
+name: Apple Silicon Production Toolchain Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-macos-arm64:
+    name: Test released Universal toolchain on Apple Silicon
+    runs-on: macos-15
+
+    steps:
+      # ------------------------------------------------------------
+      # Prove that this job is actually running on Apple Silicon.
+      # ------------------------------------------------------------
+
+      - name: Verify Apple Silicon runner
+        run: |
+          set -euo pipefail
+
+          echo "=== Runner architecture ==="
+          uname -m
+          arch
+
+          test "$(uname -m)" = "arm64"
+
+      # ------------------------------------------------------------
+      # Download the exact production toolchain distributed by
+      # Informant. Do not rebuild or modify the package.
+      # ------------------------------------------------------------
+
+      - name: Download released Universal toolchain
+        run: |
+          set -euo pipefail
+
+          curl -fL \
+            -o informant-toolchain.tar.gz \
+            "https://github.com/interactivefiction/informant-toolchains/releases/download/inform-10.1.2c-macosuniv-x64/informant-toolchain-macos-universal-10.1.2.tar.gz"
+
+      # ------------------------------------------------------------
+      # Verify that the downloaded artifact is exactly the production
+      # artifact expected by Informant.
+      # ------------------------------------------------------------
+
+      - name: Verify released toolchain SHA-256
+        run: |
+          set -euo pipefail
+
+          echo \
+            "df222fe547277b73900d5196c68232934779fdfb0719b34ab1f4553a8f9b9749  informant-toolchain.tar.gz" \
+            | shasum -a 256 -c -
+
+      # ------------------------------------------------------------
+      # Extract the released package and record the architectures of
+      # the packaged native executables.
+      # ------------------------------------------------------------
+
+      - name: Extract released toolchain
+        run: |
+          set -euo pipefail
+
+          tar -xzf informant-toolchain.tar.gz
+
+          test -d PACKAGE
+          test -x PACKAGE/Compilers/inform7
+          test -x PACKAGE/Compilers/inform6
+          test -x PACKAGE/Compilers/inblorb
+
+          echo "=== Packaged compiler architectures ==="
+          file PACKAGE/Compilers/inform7
+          file PACKAGE/Compilers/inform6
+          file PACKAGE/Compilers/inblorb
+
+      # ------------------------------------------------------------
+      # Functional test of packaged toolchain
+      #
+      # Compile a real Inform project using ONLY the released
+      # Informant package.
+      # ------------------------------------------------------------
+
+      - name: Create packaged toolchain smoke test
+        run: |
+          set -euo pipefail
+
+          rm -rf SmokeTest.inform
+          mkdir -p SmokeTest.inform/Source
+
+          cat > SmokeTest.inform/Source/story.ni <<'EOF'
+          "Smoke Test"
+
+          Lab is a room.
+          EOF
+
+          echo "=== story.ni ==="
+          cat SmokeTest.inform/Source/story.ni
+
+      - name: Compile smoke test with packaged inform7
+        run: |
+          set -euo pipefail
+
+          PACKAGE_ROOT="$PWD/PACKAGE"
+          PROJECT_ROOT="$PWD/SmokeTest.inform"
+
+          "$PACKAGE_ROOT/Compilers/inform7" \
+            -internal "$PACKAGE_ROOT" \
+            -format=Inform6/32d \
+            -project "$PROJECT_ROOT"
+
+      - name: Verify packaged inform7 output
+        run: |
+          set -euo pipefail
+
+          test -f SmokeTest.inform/Build/auto.inf
+
+          echo "========================================"
+          echo " PACKAGED INFORM7 ARM64 TEST PASSED"
+          echo "========================================"
+
+          ls -lh SmokeTest.inform/Build/auto.inf
+
+      - name: Compile smoke test with packaged inform6
+        run: |
+          set -euo pipefail
+
+          "$PWD/PACKAGE/Compilers/inform6" \
+            -wxE2kSDG \
+            '$huge' \
+            "$PWD/SmokeTest.inform/Build/auto.inf" \
+            "$PWD/SmokeTest.inform/Build/output-test.ulx"
+
+      - name: Verify packaged story output
+        run: |
+          set -euo pipefail
+
+          test -f SmokeTest.inform/Build/output-test.ulx
+
+          echo "========================================"
+          echo " APPLE SILICON TOOLCHAIN TEST PASSED"
+          echo "========================================"
+
+          file SmokeTest.inform/Build/output-test.ulx
+          ls -lh SmokeTest.inform/Build/output-test.ulx
