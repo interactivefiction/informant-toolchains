@@ -27,7 +27,7 @@ PACKAGE/
 +-- Miscellany/
 +-- Pipelines/
 +-- Player/
-+-- REDIST/
++-- Redist/
 +-- Templates/
 ```
 
